@@ -1,48 +1,36 @@
-// Your web app's Firebase configuration
-const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_AUTH_DOMAIN",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_STORAGE_BUCKET",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID"
-};
+const DROPBOX_ACCESS_TOKEN = 'YOUR_DROPBOX_ACCESS_TOKEN';
 
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
-
-const storage = firebase.storage();
-const db = firebase.firestore();
+const dbx = new Dropbox.Dropbox({ accessToken: sl.B2qe-4Rs2Spk3le7LZu3lUrypGO0FOqD7DGNsbDF8LdvWutJDKJORsQWXTJqFcDLroT5aXzcVOnG0bpKJKQYoA_2LHa9asqlhhuLM6dtuy7pfAx6bm9skg62EUXmplfTqG1OwhiCfsfPv4g });
 
 const dropArea = document.getElementById('drop-area');
 const fileList = document.getElementById('file-list');
 
 // Prevent default drag behaviors
-;['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-    dropArea.addEventListener(eventName, preventDefaults, false)
-    document.body.addEventListener(eventName, preventDefaults, false)
+['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+    dropArea.addEventListener(eventName, preventDefaults, false);
+    document.body.addEventListener(eventName, preventDefaults, false);
 });
 
 function preventDefaults (e) {
-    e.preventDefault()
-    e.stopPropagation()
+    e.preventDefault();
+    e.stopPropagation();
 }
 
 // Highlight drop area when item is dragged over it
-;['dragenter', 'dragover'].forEach(eventName => {
-    dropArea.addEventListener(eventName, highlight, false)
+['dragenter', 'dragover'].forEach(eventName => {
+    dropArea.addEventListener(eventName, highlight, false);
 });
 
-;['dragleave', 'drop'].forEach(eventName => {
-    dropArea.addEventListener(eventName, unhighlight, false)
+['dragleave', 'drop'].forEach(eventName => {
+    dropArea.addEventListener(eventName, unhighlight, false);
 });
 
 function highlight(e) {
-    dropArea.classList.add('highlight')
+    dropArea.classList.add('highlight');
 }
 
 function unhighlight(e) {
-    dropArea.classList.remove('highlight')
+    dropArea.classList.remove('highlight');
 }
 
 dropArea.addEventListener('drop', handleDrop, false);
@@ -58,18 +46,18 @@ function handleFiles(files) {
 }
 
 function uploadFile(file) {
-    const storageRef = storage.ref();
-    const fileRef = storageRef.child(file.name);
-    fileRef.put(file).then(snapshot => {
-        snapshot.ref.getDownloadURL().then(downloadURL => {
-            db.collection('files').add({
-                name: file.name,
-                url: downloadURL,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            displayFile({ name: file.name, url: downloadURL });
-        });
-    });
+    const reader = new FileReader();
+    reader.onload = function(event) {
+        dbx.filesUpload({path: '/' + file.name, contents: event.target.result})
+            .then(response => {
+                return dbx.sharingCreateSharedLink({path: response.path_display});
+            })
+            .then(linkResponse => {
+                displayFile({ name: file.name, url: linkResponse.url.replace('?dl=0', '?raw=1') });
+            })
+            .catch(error => console.error(error));
+    };
+    reader.readAsArrayBuffer(file);
 }
 
 function displayFile(file) {
@@ -81,10 +69,3 @@ function displayFile(file) {
     li.appendChild(a);
     fileList.appendChild(li);
 }
-
-db.collection('files').orderBy('createdAt').onSnapshot(snapshot => {
-    fileList.innerHTML = '';
-    snapshot.forEach(doc => {
-        displayFile(doc.data());
-    });
-});
