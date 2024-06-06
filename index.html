@@ -21,10 +21,24 @@
         #fileList li {
             margin: 10px 0;
         }
+        #ipDisplay, #recipients {
+            margin: 20px 0;
+        }
     </style>
 </head>
 <body>
     <h1>P2P File Sharing</h1>
+    <div id="ipDisplay">
+        <input type="checkbox" id="showIpCheckbox"> Show my IP
+        <p id="myIp" style="display: none;">Loading...</p>
+    </div>
+    <div id="recipients">
+        <h2>Saved Recipients</h2>
+        <ul id="recipientsList"></ul>
+        <input type="text" id="ipInput" placeholder="Enter IP">
+        <input type="text" id="nameInput" placeholder="Enter Name">
+        <button id="addRecipientButton">Add Recipient</button>
+    </div>
     <input type="file" id="fileInput" multiple>
     <button id="shareFilesButton">Share Files</button>
     <h2>Available Files</h2>
@@ -36,6 +50,59 @@
         const fileInput = document.getElementById('fileInput');
         const fileList = document.getElementById('fileList');
         const shareFilesButton = document.getElementById('shareFilesButton');
+        const showIpCheckbox = document.getElementById('showIpCheckbox');
+        const myIp = document.getElementById('myIp');
+        const ipInput = document.getElementById('ipInput');
+        const nameInput = document.getElementById('nameInput');
+        const addRecipientButton = document.getElementById('addRecipientButton');
+        const recipientsList = document.getElementById('recipientsList');
+
+        let savedRecipients = JSON.parse(localStorage.getItem('recipients')) || [];
+
+        // Load saved recipients on startup
+        function loadRecipients() {
+            recipientsList.innerHTML = '';
+            savedRecipients.forEach((recipient, index) => {
+                const li = document.createElement('li');
+                li.textContent = `${recipient.name} (${recipient.ip})`;
+                recipientsList.appendChild(li);
+            });
+        }
+
+        // Add new recipient
+        addRecipientButton.addEventListener('click', () => {
+            const ip = ipInput.value;
+            const name = nameInput.value;
+            if (ip && name) {
+                savedRecipients.push({ ip, name });
+                localStorage.setItem('recipients', JSON.stringify(savedRecipients));
+                loadRecipients();
+                ipInput.value = '';
+                nameInput.value = '';
+            } else {
+                alert('Please enter both IP and name.');
+            }
+        });
+
+        loadRecipients();
+
+        // Show IP address when checkbox is checked
+        showIpCheckbox.addEventListener('change', async () => {
+            if (showIpCheckbox.checked) {
+                const ip = await getIpAddress();
+                myIp.textContent = `Your IP: ${ip}`;
+                myIp.style.display = 'block';
+            } else {
+                myIp.style.display = 'none';
+            }
+        });
+
+        // Function to get public IP address
+        async function getIpAddress() {
+            const response = await fetch('https://api.ipify.org?format=json');
+            const data = await response.json();
+            return data.ip;
+        }
 
         shareFilesButton.addEventListener('click', () => {
             const files = fileInput.files;
