@@ -3,29 +3,72 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Drag and Drop File Sharing</title>
+    <title>P2P File Sharing</title>
     <style>
-        #drop-area {
-            border: 2px dashed #ccc;
-            width: 100%;
-            max-width: 600px;
-            margin: 50px auto;
-            padding: 20px;
+        body {
+            font-family: Arial, sans-serif;
             text-align: center;
+            margin: 0;
+            padding: 20px;
         }
-        #file-list {
-            margin-top: 20px;
+        #fileInput {
+            margin: 20px 0;
+        }
+        #fileList {
+            list-style-type: none;
+            padding: 0;
+        }
+        #fileList li {
+            margin: 10px 0;
         }
     </style>
 </head>
 <body>
-    <div id="drop-area">
-        <h2>Drag and Drop Files Here</h2>
-        <input type="file" id="fileElem" multiple accept="*/*" style="display:none">
-        <label class="button" for="fileElem">Select some files</label>
-        <ul id="file-list"></ul>
-    </div>
-    <script src="https://unpkg.com/dropbox/dist/Dropbox-sdk.min.js"></script>
-    <script src="script.js"></script>
+    <h1>P2P File Sharing</h1>
+    <input type="file" id="fileInput" multiple>
+    <button id="shareFilesButton">Share Files</button>
+    <h2>Available Files</h2>
+    <ul id="fileList"></ul>
+
+    <script src="https://cdn.jsdelivr.net/npm/webtorrent/webtorrent.min.js"></script>
+    <script>
+        const client = new WebTorrent();
+        const fileInput = document.getElementById('fileInput');
+        const fileList = document.getElementById('fileList');
+        const shareFilesButton = document.getElementById('shareFilesButton');
+
+        shareFilesButton.addEventListener('click', () => {
+            const files = fileInput.files;
+            if (files.length === 0) {
+                alert('Please select files to share.');
+                return;
+            }
+
+            for (const file of files) {
+                client.seed(file, torrent => {
+                    const li = document.createElement('li');
+                    li.textContent = `${file.name} (Magnet URI: ${torrent.magnetURI})`;
+                    fileList.appendChild(li);
+                });
+            }
+        });
+
+        function addTorrent(magnetURI) {
+            client.add(magnetURI, torrent => {
+                torrent.files.forEach(file => {
+                    const li = document.createElement('li');
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(file);
+                    a.download = file.name;
+                    a.textContent = `Download ${file.name}`;
+                    li.appendChild(a);
+                    fileList.appendChild(li);
+                });
+            });
+        }
+
+        // Example: Add a magnet URI manually for testing
+        // addTorrent('your-magnet-uri-here');
+    </script>
 </body>
 </html>
