@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drag and Drop File Sharing</title>
+    <style>
+        #drop-area {
+            border: 2px dashed #ccc;
+            width: 100%;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            text-align: center;
+        }
+        #file-list {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="drop-area">
+        <h2>Drag and Drop Files Here</h2>
+        <input type="file" id="fileElem" multiple accept="*/*" style="display:none">
+        <label class="button" for="fileElem">Select some files</label>
+        <ul id="file-list"></ul>
+    </div>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-storage.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
