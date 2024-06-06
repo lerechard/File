@@ -24,6 +24,13 @@
         #ipDisplay, #recipients {
             margin: 20px 0;
         }
+        #recipientsList, #requestsList {
+            list-style-type: none;
+            padding: 0;
+        }
+        #recipientsList li, #requestsList li {
+            margin: 10px 0;
+        }
     </style>
 </head>
 <body>
@@ -39,14 +46,17 @@
         <input type="text" id="nameInput" placeholder="Enter Name">
         <button id="addRecipientButton">Add Recipient</button>
     </div>
+    <div id="requests">
+        <h2>Connection Requests</h2>
+        <ul id="requestsList"></ul>
+    </div>
     <input type="file" id="fileInput" multiple>
     <button id="shareFilesButton">Share Files</button>
     <h2>Available Files</h2>
     <ul id="fileList"></ul>
 
-    <script src="https://cdn.jsdelivr.net/npm/webtorrent/webtorrent.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/simple-peer/simplepeer.min.js"></script>
     <script>
-        const client = new WebTorrent();
         const fileInput = document.getElementById('fileInput');
         const fileList = document.getElementById('fileList');
         const shareFilesButton = document.getElementById('shareFilesButton');
@@ -56,8 +66,10 @@
         const nameInput = document.getElementById('nameInput');
         const addRecipientButton = document.getElementById('addRecipientButton');
         const recipientsList = document.getElementById('recipientsList');
+        const requestsList = document.getElementById('requestsList');
 
         let savedRecipients = JSON.parse(localStorage.getItem('recipients')) || [];
+        let connectionRequests = [];
 
         // Load saved recipients on startup
         function loadRecipients() {
@@ -104,6 +116,53 @@
             return data.ip;
         }
 
+        // Peer-to-peer connection setup
+        let peers = {};
+
+        function createPeer(initiator, ip) {
+            const peer = new SimplePeer({ initiator, trickle: false });
+
+            peer.on('signal', data => {
+                if (initiator) {
+                    // Send signal data to the recipient via a signaling mechanism (not covered here)
+                    console.log(`Signal data for ${ip}:`, JSON.stringify(data));
+                } else {
+                    // Accept connection request
+                    const li = document.createElement('li');
+                    const acceptButton = document.createElement('button');
+                    const denyButton = document.createElement('button');
+                    acceptButton.textContent = 'Accept';
+                    denyButton.textContent = 'Deny';
+
+                    li.textContent = `Connection request from ${ip}`;
+                    li.appendChild(acceptButton);
+                    li.appendChild(denyButton);
+                    requestsList.appendChild(li);
+
+                    acceptButton.addEventListener('click', () => {
+                        peer.signal(data);
+                        requestsList.removeChild(li);
+                    });
+
+                    denyButton.addEventListener('click', () => {
+                        requestsList.removeChild(li);
+                    });
+                }
+            });
+
+            peer.on('connect', () => {
+                console.log('Connected to', ip);
+                peers[ip] = peer;
+            });
+
+            peer.on('data', data => {
+                // Handle received data (files)
+                console.log('Received data:', data);
+            });
+
+            return peer;
+        }
+
         shareFilesButton.addEventListener('click', () => {
             const files = fileInput.files;
             if (files.length === 0) {
@@ -111,31 +170,28 @@
                 return;
             }
 
+            const recipientIp = ipInput.value;
+            if (!peers[recipientIp]) {
+                const peer = createPeer(true, recipientIp);
+                peers[recipientIp] = peer;
+            }
+
+            const peer = peers[recipientIp];
             for (const file of files) {
-                client.seed(file, torrent => {
-                    const li = document.createElement('li');
-                    li.textContent = `${file.name} (Magnet URI: ${torrent.magnetURI})`;
-                    fileList.appendChild(li);
-                });
+                const reader = new FileReader();
+                reader.onload = () => {
+                    peer.send(reader.result);
+                };
+                reader.readAsArrayBuffer(file);
             }
         });
 
-        function addTorrent(magnetURI) {
-            client.add(magnetURI, torrent => {
-                torrent.files.forEach(file => {
-                    const li = document.createElement('li');
-                    const a = document.createElement('a');
-                    a.href = URL.createObjectURL(file);
-                    a.download = file.name;
-                    a.textContent = `Download ${file.name}`;
-                    li.appendChild(a);
-                    fileList.appendChild(li);
-                });
-            });
+        async function initialize() {
+            const ip = await getIpAddress();
+            const peer = createPeer(false, ip);
         }
 
-        // Example: Add a magnet URI manually for testing
-        // addTorrent('your-magnet-uri-here');
+        initialize();
     </script>
 </body>
 </html>
